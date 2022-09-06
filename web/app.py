@@ -2,7 +2,7 @@ from distutils.log import debug
 from operator import pos
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
-import spacy
+import en_core_web_sm
 from flask_restful import Resource, Api
 import bcrypt
 
@@ -58,7 +58,94 @@ class Register(Resource):
         }
 
         return jsonify(retJSON)
+
+def verifyPassword(username, password):
+    
+    if password == users.find_one({"Username": username})[0]["Password"]:
+        return True
+    else: 
+        return False
+
+
+
+def countTokens(username):
+
+    num_tokens = users.find_one({"Username": username})[0]["Tokens"]
+
+    return num_tokens
+
+
+class Detect(Resource):
+
+    def post(self):
+        #get posted data
+        postedData = request.get_json()
+
+        #get username, password and texts from posted data
+        username = postedData["username"]
+        password = postedData["password"]
+        text1 = postedData["text1"]
+        text2 = postedData["text2"]
+
+        user_exists = verfiyUserName(username)
+        if not user_exists:
+            retJSON = {
+                "status": 302,
+                "message": "Username does not exist. Try registering if you do not have an account."
+            }
+            return jsonify(retJSON)
+
+        verified = verifyPassword(username, password)
+
+        if not verified:
+            retJSON = {
+                "status": 303,
+                "message": "incorrect  password"
+            }
+            return jsonify(retJSON)
+    
+        num_tokens = countTokens(username)
+
+        if num_tokens <= 0:
+            retJSON = {
+                "status": 302,
+                "message": "insufficient tokens"
+            }
+            return jsonify(retJSON)
         
+        nlp = en_core_web_sm.load()
+
+        text1 = nlp(text1)
+        text2 = nlp(text2)
+
+        ratio = text1.similarity(text2)
+
+        retJSON = {
+            "status": "200", 
+            "similarity": ratio,
+            "message": "similarity calculated succesfully"
+        }
+
+        users.update_one(
+            {
+                "Username": username
+            },
+            {
+                "$set": {
+                    "Tokens": num_tokens-1
+                }
+            })
+
+        return jsonify(retJSON)
+
+
+
+
+    
+    
+
+
+
 api.add_resource(Register, "/register")
 
 if __name__ == "__main__":
