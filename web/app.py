@@ -60,7 +60,7 @@ class Register(Resource):
         return jsonify(retJSON)
 
 def verifyPassword(username, password):
-    
+
     if password == users.find_one({"Username": username})[0]["Password"]:
         return True
     else: 
@@ -138,15 +138,8 @@ class Detect(Resource):
 
         return jsonify(retJSON)
 
-
-
-
-    
-    
-
-
-
 api.add_resource(Register, "/register")
+api.add_resource(Detect, "/detect")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
